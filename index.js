@@ -73,7 +73,7 @@ bot.command('time', ctx => {
   api.getGameTime()
     .then(response => response.json())
     .then(res => {
-      const time = moment(res.response.calculated_game_time).subtract(3, 'hours').format('HH:mm, dddd');
+      const time = moment(res.response.calculated_game_time).format('HH:mm, dddd');
       const info = '\n\nℹ️ Game time is expressed in minutes, where 10 real seconds is 1 minute of in-game time. It is number of minutes since 2015-25-10 15:48:32 CET.';
       const message = `⏱️ Time on servers: ${time}${info}`;
       return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
@@ -118,7 +118,7 @@ bot.on('callback_query', (ctx) => {
     api.getGameTime()
       .then(response => response.json())
       .then(res => {
-      const time = moment(res.response.calculated_game_time).subtract(3, 'hours').format('HH:mm, dddd');
+      const time = moment(res.response.calculated_game_time).format('HH:mm, dddd');
       const info = '\n\nℹ️ Game time is expressed in minutes, where 10 real seconds is 1 minute of in-game time. It is number of minutes since 2015-25-10 15:48:32 CET.';
         const message = `⏱️ Time on servers: ${time}${info}`;
         return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
