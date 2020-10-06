@@ -1,0 +1,27 @@
+{
+  "name": "truckersmpstatusbot",
+  "version": "1.0.0",
+  "description": "Bot for checking TruckersMP servers info",
+  "main": "index.js",
+  "scripts": {
+    "dev": "pm2 start index.js --watch",
+    "start": "pm2 start index.js",
+    "restart": "pm2 restart index.js",
+    "stop": "pm2 stop index.js"
+  },
+  "author": "Pavel Kuzyakin <pavel@kuzyakin.me> (http://kuzyakin.me)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iposho/truckersmp-status-bot.git"
+  },
+  "dependencies": {
+    "axios": "^0.20.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "moment": "^2.29.0",
+    "node-fetch": "^2.6.1",
+    "pm2": "^4.5.0",
+    "telegraf": "^3.38.0"
+  }
+}
