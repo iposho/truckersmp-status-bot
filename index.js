@@ -1,221 +1,182 @@
 const express = require('express');
-const app = express();
-const fetch = require("node-fetch");
 
+const app = express();
+
+// Telegraf's imports
 const Telegraf = require('telegraf');
-const Markup = require('telegraf/markup');
 const Extra = require('telegraf/extra');
 
-const moment =  require('moment');
-const api = require('./requests');
+//  Tools
+const api = require('./config/requests');
+const logger = require('./config/logger');
+const messages = require('./config/messages');
+const strings = require('./config/strings');
 
-const appInfo = require('./package.json');
+const { name, version } = require('./package.json');
 
-require('dotenv').config()
+require('dotenv').config();
 
+// Init app
 app.set('port', (process.env.PORT || 5000));
 
+// Init bot
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.start((ctx) => {
-  api.getGeneralStatus()
-    .then(res => {
-      const { data } = res;
-      const title = 'Welcome to our service!\n\n';
-      const truckersmp = `<b>TruckersMP Version:</b> ${data.name}\n`;
-      const ets2 = `<b>ETS2 Supported version:</b> ${data.supported_game_version}\n`;
-      const ats = `<b>ATS Supported version:</b> ${data.supported_ats_game_version}\n`;
-      const text = `\nType /status for check information about TruckersMP servers or /help to see list of commands.`
-      const message = `${title}${truckersmp}${ets2}${ats}${text}`
+  logger.addEntryToUserLog(ctx.update);
 
-      return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
-        m.inlineKeyboard(
-            [
-              [m.callbackButton('📊 Check servers status', '/status')],
-              [m.callbackButton('⏰ Game Time', '/time')]
-            ]
-        )))
+  api.getGeneralStatus()
+    .then((res) => {
+      const { data } = res;
+      const message = messages.getGeneralStatusMessage(data);
+
+      return ctx.replyWithHTML(message, Extra.HTML().markup((m) => m.inlineKeyboard(
+        [
+          [m.callbackButton('📊 Check servers status', '/status')],
+          [m.callbackButton('⏰ Game Time', '/time')],
+        ],
+      )));
     })
-    .catch(function (error) {
-      console.log(error);
-    })
+    .catch((error) => {
+      logger.addEntryToErrorLog(error);
+    });
 });
 
 bot.command('status', (ctx) => {
   api.getServersStatus()
-    .then(function (response) {
+    .then((response) => {
       const data = response.data.response;
-      const buttons = data.map(i => (
-        {
-          id: i.id,
-          game: `${i.game}:`,
-          name: i.name,
-          online: i.online ? '🟢' : '🔴',
-        }
-      ));
-      const backLink = { id: '/backLink', game: '🔙', name: 'Back to main screen' }
-      buttons.push(backLink);
+      const buttons = messages.getStatusButtons(data);
 
-      return ctx.reply('<b>Choose server for detailed information:</b>', Extra.HTML().markup((m) =>
-        m.inlineKeyboard(
-          buttons.map(i => {
-            return [m.callbackButton(`${i.online} ${i.game} ${i.name}`, i.id)]
-          })
-        )))
-        ctx.answerCbQuery();
+      return ctx.reply('<b>Choose server for detailed information:</b>',
+        Extra.HTML().markup((m) => m.inlineKeyboard(
+          buttons.map(
+            (i) => [m.callbackButton(`${i.online} ${i.game} ${i.name}`, i.id)],
+          ),
+        )));
     })
-    .catch(function (error) {
-      console.log(error);
-    })
-})
+    .catch((error) => {
+      logger.addEntryToErrorLog(error);
+    });
+});
 
-bot.command('time', ctx => {
+bot.command('time', (ctx) => {
   api.getGameTime()
-    .then(response => response.json())
-    .then(res => {
-      const time = moment(res.response.calculated_game_time).format('HH:mm, dddd');
-      const info = '\n\nℹ️ Game time is expressed in minutes, where 10 real seconds is 1 minute of in-game time. It is number of minutes since 2015-25-10 15:48:32 CET.';
-      const message = `⏱️ Time on servers: ${time}${info}`;
-      return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
-          m.inlineKeyboard(
-      [m.callbackButton('🔙' + ' ' +
-          'Back', '/backLink')]
-          )));
+    .then((response) => response.json())
+    .then((res) => {
+      const time = res.response.calculated_game_time;
+      const message = messages.getTimeMessage(time);
+
+      return ctx.replyWithHTML(message,
+        Extra.HTML().markup((m) => m.inlineKeyboard(
+          [m.callbackButton('\uD83D\uDD19 Back', '/backLink')],
+        )));
     })
-    .catch(err => {
-      console.error(err);
-    })
-})
+    .catch((err) => {
+      logger.addEntryToErrorLog(err);
+    });
+});
 
 bot.on('callback_query', (ctx) => {
   if (ctx.callbackQuery.data === '/backLink') {
     api.getGeneralStatus()
-    .then(res => {
-      const { data } = res;
-      const title = 'Welcome to our service!\n\n';
-      const truckersmp = `<b>TruckersMP Version:</b> ${data.name}\n`;
-      const ets2 = `<b>ETS2 Supported version:</b> ${data.supported_game_version}\n`;
-      const ats = `<b>ATS Supported version:</b> ${data.supported_ats_game_version}\n`;
-      const text = `\nType /status for check information about TruckersMP servers or /help to see list of commands.`
-      const message = `${title}${truckersmp}${ets2}${ats}${text}`
+      .then((res) => {
+        const { data } = res;
+        const message = messages.getBackLinkMessage(data);
 
-      return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
-        m.inlineKeyboard(
-          [
-            [m.callbackButton('📊 Check servers status', '/status')],
-            [m.callbackButton('⏰ Game Time', '/time')]
-          ]
-        )))
-    })
-    .catch(function (error) {
-      console.log(error);
-    })
+        return ctx.replyWithHTML(message,
+          Extra.HTML().markup((m) => m.inlineKeyboard(
+            [
+              [m.callbackButton('📊 Check servers status', '/status')],
+              [m.callbackButton('⏰ Game Time', '/time')],
+            ],
+          )));
+      })
+      .catch((error) => {
+        logger.addEntryToErrorLog(error);
+      });
 
     ctx.answerCbQuery();
   }
 
   if (ctx.callbackQuery.data === '/time') {
     api.getGameTime()
-      .then(response => response.json())
-      .then(res => {
-      const time = moment(res.response.calculated_game_time).format('HH:mm, dddd');
-      const info = '\n\nℹ️ Game time is expressed in minutes, where 10 real seconds is 1 minute of in-game time. It is number of minutes since 2015-25-10 15:48:32 CET.';
-        const message = `⏱️ Time on servers: ${time}${info}`;
-        return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
-          m.inlineKeyboard(
-            [m.callbackButton('🔙' + ' ' +
-                'Back', '/backLink')]
+      .then((response) => response.json())
+      .then((res) => {
+        const time = res.response.calculated_game_time;
+        const message = messages.getTimeMessage(time);
+
+        return ctx.replyWithHTML(message,
+          Extra.HTML().markup((m) => m.inlineKeyboard(
+            [m.callbackButton('\uD83D\uDD19 Back', '/backLink')],
           )));
       })
-      .catch(err => {
-        console.error(err);
-      })
+      .catch((err) => {
+        logger.addEntryToErrorLog(err);
+      });
 
     ctx.answerCbQuery();
   }
 
   if (ctx.callbackQuery.data === '/status') {
     api.getServersStatus()
-    .then(function (response) {
-      const data = response.data.response;
-      const buttons = data.map(i => (
-        {
-          id: i.id,
-          game: `${i.game}:`,
-          name: i.name,
-          online: i.online ? '🟢' : '🔴',
-        }
-      ));
-      const backLink = { online: '', id: '/backLink', game: '🔙', name: 'Back to main screen' };
-      buttons.push(backLink);
+      .then((response) => {
+        const data = response.data.response;
+        const buttons = messages.getStatusButtons(data);
 
-      return ctx.reply('<b>Choose server for detailed information:</b>', Extra.HTML().markup((m) =>
-        m.inlineKeyboard(
-          buttons.map(i => {
-            return [m.callbackButton(`${i.online} ${i.game} ${i.name}`, i.id)]
-          })
-        )))
-        ctx.answerCbQuery();
-    })
-    .catch(function (error) {
-      console.log(error);
-    })
+        return ctx.reply('<b>Choose server for detailed information:</b>',
+          Extra.HTML().markup((m) => m.inlineKeyboard(
+            buttons.map(
+              (i) => [
+                m.callbackButton(`${i.online} ${i.game} ${i.name}`,
+                  i.id)],
+            ),
+          )));
+      })
+      .catch((error) => {
+        logger.addEntryToErrorLog(error);
+      });
 
     ctx.answerCbQuery();
   }
 
   api.getServersStatus()
-    .then(function (response) {
+    .then((response) => {
       const data = response.data.response;
 
-      const serverInfo = data.filter(i => i.id === Number(ctx.callbackQuery.data));
+      const serverInfo = data.filter((i) => Number(ctx.callbackQuery.data)
+          === i.id);
       const isValid = !!serverInfo[0];
 
       if (!isValid) {
         return false;
       }
 
-      const onlineIcon = serverInfo[0].online ? '🟢' : '🔴';
-      const messageTitle = `<b>${onlineIcon} ${serverInfo[0].game}: ${serverInfo[0].name}</b>\n\n`
-      const playersCount = `Players Online: ${serverInfo[0].players} / ${serverInfo[0].maxplayers}`;
-      const queue = serverInfo[0].queue > 0 ? `\n\nQueue: ${serverInfo[0].queue}` : '';
-      const speedlimiter = serverInfo[0].speedlimiter === 1
-          ? `\n\nSpeedLimit: ${serverInfo[0].game === 'ETS2' ? '110 km/h ⚠️': '80 mph ⚠️'}`
-          : `\n\nSpeedLimit: disabled`;
-      const collisions = serverInfo[0].collisions ? "\n\nCollisions enabled" : '';
-      const carsEnabled = serverInfo[0].carsforplayers ? '\n\nCars for players: enabled' : '';
-      const ipAddress = `\n\n<code>${serverInfo[0].ip}:${serverInfo[0].port}</code>`;
+      const message = messages.getServerStatusMessage(serverInfo);
 
-      const message = `${messageTitle}${playersCount}${queue}${speedlimiter}${collisions}${ipAddress}`;
-
-      return ctx.replyWithHTML(message, Extra.HTML().markup((m) =>
-        m.inlineKeyboard(
-          [m.callbackButton('🔙' + ' ' +
-              'Back to servers list', '/status')]
+      return ctx.replyWithHTML(message,
+        Extra.HTML().markup((m) => m.inlineKeyboard(
+          [m.callbackButton('\uD83D\uDD19 Back to servers list', '/status')],
         )));
     })
-    .catch(function (error) {
-      console.log(error);
-    })
+    .catch((error) => {
+      logger.addEntryToErrorLog(error);
+    });
 
-    ctx.answerCbQuery();
-})
+  ctx.answerCbQuery();
+});
 
-bot.command('about', (ctx) => {
-  return ctx.replyWithHTML(`Telegram bot for check actual info about TruckersMP services.\n\nAuthor: Pavel Kuzyakin\n\nRepo: https://github.com/iposho/truckersmp-status-bot`, Extra.webPreview(false));
-})
+bot.command('about', (ctx) => ctx.replyWithHTML(strings.aboutString, Extra.webPreview(false)));
 
-bot.command('help', (ctx) => {
-  return ctx.replyWithHTML(`<b>List of commands:</b>\n\n/start - Start bot\n\n/status - Check Servers Status\n\n\/time - Check game time on servers\n\n/help - List of commands\n\n/about - About this bot`);
-})
+bot.command('help', (ctx) => ctx.replyWithHTML(strings.helpString));
 
-
+// Launch bot
 bot.launch();
 
-
-app.get('/mp', function(request, response) {
-  const result = `<pre>🚀 ${appInfo.name} is running.\n\nversion ${appInfo.version}</pre>`
+app.get('/mp', (request, response) => {
+  const result = `<pre>🚀 ${name} is running.\n\nversion ${version}</pre>`;
   response.send(result);
-}).listen(app.get('port'), function() {
-  console.log(`🚀 ${appInfo.name} running, server is listening on port`, app.get('port'));
+}).listen(app.get('port'), () => {
+  // eslint-disable-next-line no-console
+  console.log(`🚀 ${name} running, server is listening on port`, app.get('port'));
 });

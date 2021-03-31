@@ -16,12 +16,17 @@
     "url": "https://github.com/iposho/truckersmp-status-bot.git"
   },
   "dependencies": {
-    "axios": "^0.20.0",
+    "axios": "^0.21.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "moment": "^2.29.0",
     "node-fetch": "^2.6.1",
-    "pm2": "^4.5.0",
+    "pm2": "^3.5.2",
     "telegraf": "^3.38.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.23.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1"
   }
 }
