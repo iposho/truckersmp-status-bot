@@ -2,10 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const moment = require('moment');
 
+const ensureDirectoryExistence = (filePath) => {
+  const dirname = path.dirname(filePath);
+
+  if (fs.existsSync(dirname)) {
+    return;
+  }
+
+  ensureDirectoryExistence(dirname);
+  fs.mkdirSync(dirname);
+};
+
 const usersLogPath = path.join(__dirname, '../log/users.log');
 const errorLogPath = path.join(__dirname, '../log/error.log');
 
 const addEntryToUserLog = (update) => {
+  ensureDirectoryExistence(usersLogPath);
+
   const timestamp = moment().format('HH:mm:ss DD.MM.YYYY');
   const { message } = update;
   const user = message.from;
@@ -16,6 +29,8 @@ const addEntryToUserLog = (update) => {
 };
 
 const addEntryToErrorLog = (error) => {
+  ensureDirectoryExistence(errorLogPath);
+
   const timestamp = moment().format('HH:mm:ss DD.MM.YYYY');
   const string = `${timestamp.toString()} ${error}\n`;
 
